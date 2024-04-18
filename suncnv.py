@@ -8,9 +8,13 @@ from datetime import datetime
 from multiprocessing import Pool
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pysam
+import seaborn as sns
+
+sns.set_palette("Set2")
 
 now = lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -278,7 +282,7 @@ def filter_segment(status_drop: pd.DataFrame, seeds: list, segments: list, min_b
     return filtered_segments
 
 
-def make_segments(status: pd.DataFrame, min_bin_count: int, max_gap_count: int, output: Path):
+def make_segments(status: pd.DataFrame, min_bin_count: int, max_gap_count: int, output: Path) -> pd.DataFrame:
     print(f"{now()} INFO: segment by status")
     status_drop = status[~status["status"].str.startswith("?")]
     ratio = 100 - len(status_drop) / len(status) * 100
@@ -294,14 +298,78 @@ def make_segments(status: pd.DataFrame, min_bin_count: int, max_gap_count: int, 
             filtered_segments = filter_segment(status_drop, seeds, segments, min_bin_count)
             print(f"{now()} INFO: {len(filtered_segments)} segments kept")
             with output.open("w") as f:
+                array = []
                 header = ["chrom", "start", "end", "length", "ratio", "uratio", "type", "genes"]
                 print("\t".join(header), file=f)
                 for row in filtered_segments:
                     print("\t".join(map(str, row)), file=f)
+                    array.append(row)
+                data = pd.DataFrame(array, columns=header)
+                return data
 
 
-def plot():
-    pass
+def plot_genome(status: pd.DataFrame, segments: pd.DataFrame, output: Path):
+    print(f"{now()} INFO: plot genome")
+    with pd.option_context("mode.chained_assignment", None):
+        status["position"] = (status["start"] + status["end"]) // 2
+    array = []
+    last_end = 0
+    current_position = 0
+    last_contig = status.iloc[0]["chrom"]
+    for row in status.itertuples():
+        if row.chrom != last_contig:
+            current_position += last_end
+        position = current_position + row.position
+        last_end = row.end
+        last_contig = row.chrom
+        if "?" not in row.status:
+            array.append((position, row.rFR_q50))
+    data = pd.DataFrame(array, columns=["Genomic Position", "Relative Copy Number"])
+
+    labels = []
+    vlines = []
+    genome_size = 0
+    chrom_sizes = []
+    for contig in [f"chr{i}" for i in range(1, 23)] + ["chrX", "chrY"]:
+        size = status.query("chrom==@contig")["end"].max()
+        chrom_sizes.append((contig, size))
+        middle = size // 2
+        labels.append((contig, genome_size + middle))
+        vlines.append((genome_size, genome_size + size))
+        genome_size += size
+
+    array = []
+    for row in segments.itertuples():
+        current_position = 0
+        for chrom, size in chrom_sizes:
+            if row.chrom == chrom:
+                break
+            else:
+                current_position += size
+        start = row.start + current_position
+        end = row.end + current_position
+        array.append((start, end, row.ratio))
+    hlines = pd.DataFrame(array, columns=["start", "end", "ratio"])
+
+    _, ax = plt.subplots(figsize=(15, 5))
+    sns.scatterplot(data=data, x="Genomic Position", y="Relative Copy Number", s=1, alpha=1, edgecolor=None, color="deepskyblue", ax=ax)
+    plt.hlines([0.5, 1, 1.5], 0, labels[-1][1], colors="green", linestyles="--", linewidth=0.5)
+    for vline in vlines:
+        plt.vlines(vline[0], -0.5, 2.5, colors="gray", linestyles="-", linewidth=0.5)
+    for row in hlines.itertuples():
+        plt.hlines(row.ratio, row.start, row.end, colors="red", linestyles="-", linewidth=2)
+    ax.set_xticks([t[1] for t in labels])
+    ax.set_xticklabels([t[0].replace("chr", "") for t in labels])
+    ax.set_yticks([0, 0.5, 1, 1.5, 2])
+    plt.xlim(0, genome_size)
+    plt.ylim(-0.5, 2.5)
+    plt.tight_layout()
+    plt.savefig(output, dpi=300)
+
+
+def plot(status: pd.DataFrame, segments: pd.DataFrame, outdir: Path, prefix: str):
+    print(f"{now()} INFO: plot by status and cnv segments")
+    plot_genome(status, segments, outdir / (prefix + ".genome.png"))
 
 
 def main(input: Path, outdir: Path, bed: Path, reference: list, number: int, threads: int, overwrite: bool, min_bin_count: int, max_gap_count: int):
@@ -324,7 +392,8 @@ def main(input: Path, outdir: Path, bed: Path, reference: list, number: int, thr
                 status.to_csv(outdir / (input.stem + ".status"), sep="\t", index=False)
             else:
                 status = pd.read_csv(input, sep="\t")
-            make_segments(status, min_bin_count, max_gap_count, outdir / (input.stem + ".cnv"))
+            segments = make_segments(status, min_bin_count, max_gap_count, outdir / (input.stem + ".cnv"))
+            plot(status, segments, outdir=outdir, prefix=input.stem)
         else:
             sys.exit(f"{now()} ERROR: input file suffix must be .bam or .count or .status")
     else:

@@ -32,9 +32,7 @@ WES1.markdup.bam
 WES1F.markdup.bam
 WES1M.markdup.bam
 ...
-WES7.markdup.bam
-WES7F.markdup.bam
-WES7M.markdup.bam
+
 
 # output
 $ ls -1v normal_count/
@@ -42,9 +40,6 @@ WES1.markdup.count
 WES1F.markdup.count
 WES1M.markdup.count
 ...
-WES7.markdup.count
-WES7F.markdup.count
-WES7M.markdup.count
 ```
 
 ### Call CNV
@@ -68,9 +63,10 @@ it can use `.count` or `.bam` file as input, and use `.count` files as reference
 # output
 $ tree -h WES1/
 WES1/
-├── [4.1K]  WES1.markdup.cnv      # cnv segments
-├── [ 14M]  WES1.markdup.count    # read counts
-├── [ 12M]  WES1.markdup.status   # ratio vs reference
+├── [4.1K]  WES1.markdup.cnv         # cnv segments
+├── [ 14M]  WES1.markdup.count       # read counts
+├── [ 12M]  WES1.markdup.status      # ratio vs reference
+├── [792K]  WES1.markdup.genome.png  # scatter plot of genome
 
 # logs
 09:16:30 INFO: sex karyotype of input is xy, x_median=0.6139, y_median=0.7472
@@ -79,18 +75,13 @@ WES1/
 09:16:32 INFO: median correlation is 0.9327
 09:16:32 INFO: nearest samples are WES1F.markdup.count, WES3.markdup.count, WES3F.markdup.count, ...
 09:16:32 INFO: building reference
-09:16:33 INFO: reference built
-09:16:42 INFO: segment by status
-09:16:42 INFO: keep 226235 of 254033 bins, drop 10.94% bins
-09:16:42 INFO: 2498 seeds found
-09:16:42 INFO: 165 segments found
-09:16:42 INFO: 69 segments kept
+...
 ```
 
-### Scatter plot
+#### Genome plot
 
-TODO
+![genome.png](genome.png)
 
-## Benchmark
+#### Chromosome plot
 
 TODO
