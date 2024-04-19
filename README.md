@@ -33,7 +33,6 @@ WES1F.markdup.bam
 WES1M.markdup.bam
 ...
 
-
 # output
 $ ls -1v normal_count/
 WES1.markdup.count
@@ -67,6 +66,9 @@ WES1/
 ├── [ 14M]  WES1.markdup.count       # read counts
 ├── [ 12M]  WES1.markdup.status      # ratio vs reference
 ├── [792K]  WES1.markdup.genome.png  # scatter plot of genome
+├── [364K]  WES1.markdup.chr1.png    # scatter plot of chr1
+├── [326K]  WES1.markdup.chr2.png    # scatter plot of chr2
+...
 
 # logs
 09:16:30 INFO: sex karyotype of input is xy, x_median=0.6139, y_median=0.7472
@@ -84,4 +86,4 @@ WES1/
 
 #### Chromosome plot
 
-TODO
+![chromosome.png](chromosome.png)

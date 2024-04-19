@@ -365,11 +365,36 @@ def plot_genome(status: pd.DataFrame, segments: pd.DataFrame, output: Path):
     plt.ylim(-0.5, 2.5)
     plt.tight_layout()
     plt.savefig(output, dpi=300)
+    plt.close()
+
+
+def plot_chromosomes(status: pd.DataFrame, segments: pd.DataFrame, output: Path):
+    print(f"{now()} INFO: plot chromosomes")
+    with pd.option_context("mode.chained_assignment", None):
+        status["position"] = (status["start"] + status["end"]) // 2
+    for contig in [f"chr{i}" for i in range(1, 23)] + ["chrX", "chrY"]:
+        status_contig = status.query("chrom==@contig and '?' not in status")
+        segments_contig = segments.query("chrom==@contig")
+        contig_size = status_contig["end"].max()
+        _, ax = plt.subplots(figsize=(15, 5))
+        sns.scatterplot(data=status_contig, x="position", y="rFR_q50", s=1, alpha=1, edgecolor=None, color="deepskyblue", ax=ax)
+        plt.hlines([0.5, 1, 1.5], 0, contig_size, colors="green", linestyles="--", linewidth=0.5)
+        for row in segments_contig.itertuples():
+            plt.hlines(row.ratio, row.start, row.end, colors="red", linestyles="-", linewidth=2)
+        ax.ticklabel_format(style="plain", axis="x")
+        ax.set_yticks([0, 0.5, 1, 1.5, 2])
+        ax.set_ylabel("Relative Copy Number")
+        ax.set_xlabel(f"{contig} Position")
+        plt.ylim(-0.5, 2.5)
+        plt.tight_layout()
+        plt.savefig(f"{output}.{contig}.png", dpi=300)
+        plt.close()
 
 
 def plot(status: pd.DataFrame, segments: pd.DataFrame, outdir: Path, prefix: str):
     print(f"{now()} INFO: plot by status and cnv segments")
     plot_genome(status, segments, outdir / (prefix + ".genome.png"))
+    plot_chromosomes(status, segments, outdir / prefix)
 
 
 def main(input: Path, outdir: Path, bed: Path, reference: list, number: int, threads: int, overwrite: bool, min_bin_count: int, max_gap_count: int):
